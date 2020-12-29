@@ -17,6 +17,7 @@ package raft
 import (
 	"context"
 	"errors"
+	"sync"
 
 	pb "go.etcd.io/etcd/raft/v3/raftpb"
 )
@@ -225,8 +226,9 @@ func StartNode(c *Config, peers []Peer) Node {
 
 	n := newNode(rn)
 
+	go n.runbatcher()
 	go n.run()
-	return &n
+	return n
 }
 
 // RestartNode is similar to StartNode but does not take a list of peers.
@@ -239,13 +241,19 @@ func RestartNode(c *Config) Node {
 		panic(err)
 	}
 	n := newNode(rn)
+	go n.runbatcher()
 	go n.run()
-	return &n
+	return n
 }
 
 type msgWithResult struct {
 	m      pb.Message
 	result chan error
+}
+
+type batch struct {
+	data []byte
+	err  *error
 }
 
 // node is the canonical implementation of the Node interface
@@ -262,10 +270,15 @@ type node struct {
 	status     chan chan Status
 
 	rn *RawNode
+
+	bmu     sync.Mutex
+	bcondc  sync.Cond
+	bconds  sync.Cond
+	batches []*batch
 }
 
-func newNode(rn *RawNode) node {
-	return node{
+func newNode(rn *RawNode) *node {
+	n := &node{
 		propc:      make(chan msgWithResult),
 		recvc:      make(chan pb.Message),
 		confc:      make(chan pb.ConfChangeV2),
@@ -281,6 +294,10 @@ func newNode(rn *RawNode) node {
 		status: make(chan chan Status),
 		rn:     rn,
 	}
+
+	n.bcondc.L = &n.bmu
+	n.bconds.L = &n.bmu
+	return n
 }
 
 func (n *node) Stop() {
@@ -414,10 +431,6 @@ func (n *node) Tick() {
 }
 
 func (n *node) Campaign(ctx context.Context) error { return n.step(ctx, pb.Message{Type: pb.MsgHup}) }
-
-func (n *node) Propose(ctx context.Context, data []byte) error {
-	return n.stepWait(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
-}
 
 func (n *node) Step(ctx context.Context, m pb.Message) error {
 	// ignore unexpected local messages receiving over network
