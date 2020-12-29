@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -901,6 +902,7 @@ func (w *WAL) saveState(s *raftpb.HardState) error {
 func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	log.Printf("Save %d", len(ents))
 
 	// short cut, do not call sync
 	if raft.IsEmptyHardState(st) && len(ents) == 0 {

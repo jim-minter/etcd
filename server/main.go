@@ -23,11 +23,13 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"go.etcd.io/etcd/server/v3/etcdmain"
 )
 
 func main() {
+	log.SetFlags(log.Lmicroseconds)
 	etcdmain.Main(os.Args)
 }

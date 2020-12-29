@@ -17,6 +17,7 @@
 package fileutil
 
 import (
+	"log"
 	"os"
 	"syscall"
 )
@@ -30,5 +31,6 @@ func Fsync(f *os.File) error {
 // unless that metadata is needed in order to allow a subsequent data retrieval
 // to be correctly handled.
 func Fdatasync(f *os.File) error {
+	log.Println("fdatasync")
 	return syscall.Fdatasync(int(f.Fd()))
 }

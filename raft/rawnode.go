@@ -16,6 +16,7 @@ package raft
 
 import (
 	"errors"
+	"log"
 
 	pb "go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/raft/v3/tracker"
@@ -152,20 +153,26 @@ func (rn *RawNode) acceptReady(rd Ready) {
 func (rn *RawNode) HasReady() bool {
 	r := rn.raft
 	if !r.softState().equal(rn.prevSoftSt) {
+		log.Print("HasReady: softState")
 		return true
 	}
 	if hardSt := r.hardState(); !IsEmptyHardState(hardSt) && !isHardStateEqual(hardSt, rn.prevHardSt) {
+		log.Printf("HasReady: hardState %#v %#v", hardSt, rn.prevHardSt)
 		return true
 	}
 	if r.raftLog.hasPendingSnapshot() {
+		log.Print("HasReady: pendingSnapshot")
 		return true
 	}
 	if len(r.msgs) > 0 || len(r.raftLog.unstableEntries()) > 0 || r.raftLog.hasNextEnts() {
+		log.Print("HasReady: msgs/unstableEntries/hasNextEnts")
 		return true
 	}
 	if len(r.readStates) != 0 {
+		log.Print("HasReady: readStates")
 		return true
 	}
+	log.Print("HasReady: false")
 	return false
 }
 
