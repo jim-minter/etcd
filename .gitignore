@@ -1,4 +1,5 @@
 /agent-*
+/benchmark
 /coverage
 /covdir
 /gopath
